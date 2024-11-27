@@ -1,0 +1,50 @@
+name: Build and Release Edgeble linux-next
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    permissions: write-all
+    name: Edgeble linux-next runner
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
+
+      - name: Clone and Compile
+        run: |
+          cd /6tops/linux-next
+          rm -rf /6tops/out && rm -rf linux-6.1* && rm -rf modules-6.1*
+          export CROSS_COMPILE=/tools/arm-gnu-toolchain-13.2.Rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
+          ARCH=arm64 make defconfig
+          ARCH=arm64 make dtbs Image -j 16; ARCH=arm64 make modules -j 16; ARCH=arm64 make modules_install INSTALL_MOD_PATH=/6tops/out
+
+      - name: Copy deb files and create archive
+        run: |
+          echo "Present Working Directory"
+          cd /6tops/linux-next
+          mkdir linux-6.1 && mkdir -p dtb/rockchip && mkdir -p modules-6.1
+          cp -fv arch/arm64/boot/dts/rockchip/rk3588-edgeble-*.dtb dtb/rockchip
+          cp -fv arch/arm64/boot/dts/rockchip/rk3588-edgeble-*.dtbo dtb/rockchip
+          cp -fv arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dtb dtb/rockchip
+          cp -fv .config linux-6.1
+          cp -frv arch/arm64/boot/Image dtb linux-6.1
+          tar -Jcf linux-6.1.tar.xz linux-6.1
+          cp -frv /6tops/out/lib/modules/* modules-6.1
+          tar -Jcf modules-6.1.tar.xz modules-6.1
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v1.0"
+          body: |
+            - Initial support
+          files: |
+            /6tops/linux-next/linux-6.1.tar.xz
+            /6tops/linux-next/modules-6.1.tar.xz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
