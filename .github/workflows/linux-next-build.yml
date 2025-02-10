@@ -9,7 +9,7 @@ jobs:
   build:
     permissions: write-all
     name: Edgeble linux-next runner
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -17,34 +17,43 @@ jobs:
 
       - name: Clone and Compile
         run: |
-          cd /tops/linux-next
-          rm -rf /tops/out && rm -rf linux-next* && rm -rf modules-next*
+          git clone git@gitlab.com:edgeble/core/linux-next.git && cd linux-next
           export CROSS_COMPILE=/tools/arm-gnu-toolchain-13.2.Rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
-          ARCH=arm64 make defconfig
-          ARCH=arm64 make dtbs Image -j 16; ARCH=arm64 make modules -j 16; ARCH=arm64 make modules_install INSTALL_MOD_PATH=/tops/out
+          ARCH=arm64 make rockchip_linux_defconfig gpu.config edgeble-6tops.config
+          mkdir -p ${{ github.workspace }}/out
+          mkdir -p ${{ github.workspace }}/out/linux-next
+          mkdir -p ${{ github.workspace }}/out/dtb/rockchip
+          mkdir -p ${{ github.workspace }}/out/modules-next
+          ARCH=arm64 make dtbs Image -j 16; ARCH=arm64 make modules -j 16; ARCH=arm64 make modules_install INSTALL_MOD_PATH=${{ github.workspace }}/out
 
       - name: Copy deb files and create archive
         run: |
-          echo "Present Working Directory"
-          cd /tops/linux-next
-          mkdir linux-next && mkdir -p dtb/rockchip && mkdir -p modules-next
-          cp -fv arch/arm64/boot/dts/rockchip/rk3588-edgeble-*.dtb dtb/rockchip
-          cp -fv arch/arm64/boot/dts/rockchip/rk3588-edgeble-*.dtbo dtb/rockchip
-          cp -fv arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dtb dtb/rockchip
-          cp -fv .config linux-next
-          cp -frv arch/arm64/boot/Image dtb linux-next
-          tar -Jcf linux-next.tar.xz linux-next
-          cp -frv /tops/out/lib/modules/* modules-next
-          tar -Jcf modules-next.tar.xz modules-next
+          echo "Copy DTB:"
+          cp -fv ${{ github.workspace }}/linux-next/arch/arm64/boot/dts/rockchip/rk3588-edgeble-*.dtb ${{ github.workspace }}/out/dtb/rockchip
+          cp -fv ${{ github.workspace }}/linux-next/arch/arm64/boot/dts/rockchip/rk3588-edgeble-*.dtbo ${{ github.workspace }}/out/dtb/rockchip
+          cp -fv ${{ github.workspace }}/linux-next/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dtb ${{ github.workspace }}/out/dtb/rockchip
+
+          echo "Copy config:"
+          cp -fv ${{ github.workspace }}/linux-next/.config ${{ github.workspace }}/out/linux-next
+
+          echo "Create linux-next:"
+          cp -frv ${{ github.workspace }}/linux-next/arch/arm64/boot/Image ${{ github.workspace }}/out/dtb ${{ github.workspace }}/out/linux-next
+
+          echo "Create modules-next:"
+          cp -frv ${{ github.workspace }}/out/lib/modules/* ${{ github.workspace }}/out/modules-next
+
+          echo "Create tar.xz"
+          cd ${{ github.workspace }}/out/
+          tar -Jcf linux-next.tar.xz linux-next && tar -Jcf modules-next.tar.xz modules-next
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "v1.2"
+          tag_name: "v1.0"
           body: |
             - Add HDMI1 Out
           files: |
-            /tops/linux-next/linux-next.tar.xz
-            /tops/linux-next/modules-next.tar.xz
+            ${{ github.workspace }}/out/linux-next.tar.xz
+            ${{ github.workspace }}/out/modules-next.tar.xz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
