@@ -6,45 +6,45 @@ on:
       - master
 
 jobs:
-   build:
-     permissions: write-all
-     name: Edgeble linux-next runner
-     runs-on: ubuntu-latest
+  build:
+    permissions: write-all
+    name: Edgeble linux-next runner
+    runs-on: ubuntu-latest
 
-     steps:
-     - name: Checkout repository
-       uses: actions/checkout@v1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
 
-     - name: Setup SSH
-       env:
-         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-         SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
-         SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-       run: |
-         mkdir -p ~/.ssh/
-         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-         echo "$SSH_PUBLIC_KEY" > ~/.ssh/id_rsa.pub
-         echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-         chmod 600 ~/.ssh/id_rsa
-         chmod 600 ~/.ssh/id_rsa.pub
-         chmod 600 ~/.ssh/known_hosts
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          echo "$SSH_PUBLIC_KEY" > ~/.ssh/id_rsa.pub
+          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa.pub
+          chmod 600 ~/.ssh/known_hosts
 
-         # Configure SSH to use this key for GitLab
-         echo -e "Host gitlab.com\n\tIdentityFile ~/.ssh/id_rsa\n" >> ~/.ssh/config
+          # Configure SSH to use this key for GitLab
+          echo -e "Host gitlab.com\n\tIdentityFile ~/.ssh/id_rsa\n" >> ~/.ssh/config
 
-         # Test the SSH connection (optional)
-         ssh -T git@gitlab.com || echo "SSH connection test failed, but continuing..."
+          # Test the SSH connection (optional)
+          ssh -T git@gitlab.com || echo "SSH connection test failed, but continuing..."
 
-     - name: Set up Remote Docker
-       uses: docker/setup-buildx-action@v1
+      - name: Set up Remote Docker
+        uses: docker/setup-buildx-action@v1
 
-     - name: Authenticate Docker Registry
-       run: |
-         echo "Decoded Docker Auth Config:"
-         echo "${{ secrets.DOCKER_AUTH_CONFIG }}"
-         decoded_config=$(echo -n "${{ secrets.DOCKER_AUTH_CONFIG }}" | base64 --decode)
-         echo "$decoded_config" > $HOME/.docker/config.json
-         cat $HOME/.docker/config.json
+      - name: Authenticate Docker Registry
+        run: |
+          echo "Decoded Docker Auth Config:"
+          echo "${{ secrets.DOCKER_AUTH_CONFIG }}"
+          decoded_config=$(echo -n "${{ secrets.DOCKER_AUTH_CONFIG }}" | base64 --decode)
+          echo "$decoded_config" > $HOME/.docker/config.json
+          cat $HOME/.docker/config.json
 
       - name: Clone and Compile
         run: |
@@ -55,7 +55,9 @@ jobs:
           mkdir -p ${{ github.workspace }}/out/linux-next
           mkdir -p ${{ github.workspace }}/out/dtb/rockchip
           mkdir -p ${{ github.workspace }}/out/modules-next
-          ARCH=arm64 make dtbs Image -j 16; ARCH=arm64 make modules -j 16; ARCH=arm64 make modules_install INSTALL_MOD_PATH=${{ github.workspace }}/out
+          ARCH=arm64 make dtbs Image -j 16
+          ARCH=arm64 make modules -j 16
+          ARCH=arm64 make modules_install INSTALL_MOD_PATH=${{ github.workspace }}/out
 
       - name: Copy deb files and create archive
         run: |
@@ -75,7 +77,8 @@ jobs:
 
           echo "Create tar.xz"
           cd ${{ github.workspace }}/out/
-          tar -Jcf linux-next.tar.xz linux-next && tar -Jcf modules-next.tar.xz modules-next
+          tar -Jcf linux-next.tar.xz linux-next
+          tar -Jcf modules-next.tar.xz modules-next
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
