@@ -50,7 +50,7 @@ jobs:
         run: |
           git clone git@gitlab.com:edgeble/core/linux-next.git && cd linux-next
           export CROSS_COMPILE=aarch64-linux-gnu-
-          ARCH=arm64 make rockchip_linux_defconfig gpu.config edgeble-6tops.config
+          ARCH=arm64 make defconfig
           mkdir -p ${{ github.workspace }}/out
           mkdir -p ${{ github.workspace }}/out/linux-next
           mkdir -p ${{ github.workspace }}/out/dtb/rockchip
